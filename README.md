@@ -86,8 +86,18 @@ what is next?
 
 
 
+# Running things?
 
+Minimally you need a database and a python environment.
 
+Database is handled in a separate repo.  Postgres, with user `covid` and db `covid`. Password should be stored in `.password`, which will not be shipped to git.
 
+I use pipenv to set up the environment:
 
+```
+        pipenv shell
+        pipenv install
 
+        # then run the script
+        python load.py
+```

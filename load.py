@@ -5,6 +5,7 @@ import urllib.parse
 import requests
 
 from sqlalchemy import create_engine
+from sqlalchemy import desc
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -33,6 +34,19 @@ class Location(Base):
     def __repr__(self):
         return "<Loc(Country='%s' State='%s' County='%s' Id='%s')>" % (self.country, self.state, self.county, self.id)
 
+    def json(self):
+        out = {
+            "id": self.id,
+            "fips": self.fips,
+            "county": self.county,
+            "state": self.state,
+            "country": self.country,
+            "combined": self.combined,
+            "lat": self.lat,
+            "lon": self.lon
+        }
+        return out
+
 class Case(Base):
     __tablename__ = "cases"
 
@@ -50,6 +64,19 @@ class Case(Base):
     def __repr__(self):
         return "<Case(Date=%s %d/%d/%d/%d)" % (self.date, self.confirmed, self.deaths, self.recovered, self.active)
 
+def match_header(header):
+    # Province_State,Country_Region,Last_Update,Lat,Long_,Confirmed,Deaths,Recovered,Active,FIPS,Incident_Rate,People_Tested,People_Hospitalized,Mortality_Rate,UID,ISO3,Testing_Rate,Hospitalization_Rate
+    expectedHeader = ['FIPS', 'Admin2', 'Province_State', 'Country_Region', 'Last_Update', 'Lat', 'Long_', 'Confirmed', 'Deaths', 'Recovered', 'Active', 'Combined_Key']
+    for i in expectedHeader:
+        match = False
+        for j in header:
+            if i == j:
+                match = True
+                break
+        if not match:
+            return False
+    return True
+
 def retrieve(date):
     url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/%s.csv" % date
     print("getting url - %s" % url)
@@ -63,10 +90,9 @@ def retrieve(date):
         print("no cases returned")
         return [], []
 
-    expectedHeader = ['FIPS', 'Admin2', 'Province_State', 'Country_Region', 'Last_Update', 'Lat', 'Long_', 'Confirmed', 'Deaths', 'Recovered', 'Active', 'Combined_Key']
     for i, lol in enumerate(cases_raw[0]):
         cases_raw[0][i] = lol.strip().replace("\ufeff", "")
-    if cases_raw[0] != expectedHeader:
+    if not match_header(cases_raw[0]):
         print("invalid header row")
         print("gott - ", cases_raw[0])
         print("want - ", expectedHeader)
@@ -84,27 +110,29 @@ def retrieve(date):
             lon=float((row[6] if row[6] else 0)),
             combined=row[11]
         )
+        try:
+            active=int(row[10])
+        except ValueError as e:
+            print("error parsing active cases for %s" % row[11])
+        active = 0
         c = Case(
             date=row[4],
             confirmed=int(row[7]),
             deaths=int(row[8]),
             recovered=int(row[9]),
-            active=int(row[10])
+            active=active
         )
         locations.append(l)
         cases.append(c)
 
     return cases, locations
 
-
-
-
 def main():
 
     pw = ""
     with open(".password") as f:
         pw = f.read()
-        pw = urllib.parse.quote_plus("covid-19")
+        pw = urllib.parse.quote_plus(pw)
     conn = "postgresql://covid:%s@localhost:5432/covid" % pw
 
     printLogs = False
@@ -118,13 +146,20 @@ def main():
     # create a new instance for queries, etc
     session = Session()
 
-    current = datetime.date(2020, 3, 22)
+    current = get_start_date(session)
+
     while current < datetime.date.today():
         d = current.strftime("%m-%d-%Y")
-        loadDate(d, session)
+        load_date(d, session)
         current = current + datetime.timedelta(days=1)
 
-def loadDate(date, session):
+def get_start_date(session):
+    result = session.query(Case).order_by(desc(Case.date)).first()
+    if not result:
+        return datetime.date(2020, 6, 25)
+    return result.date.date()
+
+def load_date(date, session):
     # you have a pair of lists that are aligned on case and location.  
     # iterate locations to insert and get the id, then update the matched case, then insert the case
     cases, locations = retrieve(date)
@@ -145,6 +180,8 @@ def loadDate(date, session):
             location_id = loc.id
         else:
             location_id = result.id
+
+        
 
         cases[idx].location_id = location_id
         # select or update case data

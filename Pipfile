@@ -11,6 +11,8 @@ sqlalchemy = "*"
 bs4 = "*"
 requests = "*"
 psycopg2-binary = "*"
+flask = "*"
+jinja2 = "*"
 
 [requires]
 python_version = "3.8"
