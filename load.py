@@ -1,68 +1,11 @@
 import csv
 import datetime
+import requests
 import urllib.parse
 
-import requests
-
-from sqlalchemy import create_engine
 from sqlalchemy import desc
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.ext.declarative import declarative_base
+from models import *
 
-Base = declarative_base()
-
-class Location(Base):
-    __tablename__ = "locations"
-
-    id = Column(Integer, primary_key=True)
-    fips = Column(String)
-    county = Column(String)
-    state = Column(String)
-    country = Column(String)
-    combined = Column(String)
-    lat = Column(Float)
-    lon = Column(Float)
-
-    cases = relationship("Case")
-
-    __table_args__ = (
-        UniqueConstraint("country", "state", "county", name="unique_location"),
-    )
-
-
-    def __repr__(self):
-        return "<Loc(Country='%s' State='%s' County='%s' Id='%s')>" % (self.country, self.state, self.county, self.id)
-
-    def json(self):
-        out = {
-            "id": self.id,
-            "fips": self.fips,
-            "county": self.county,
-            "state": self.state,
-            "country": self.country,
-            "combined": self.combined,
-            "lat": self.lat,
-            "lon": self.lon
-        }
-        return out
-
-class Case(Base):
-    __tablename__ = "cases"
-
-    id = Column(Integer, primary_key=True)
-    date = Column(DateTime)
-    location_id = Column(Integer, ForeignKey('locations.id'))
-    confirmed = Column(Integer)
-    deaths = Column(Integer)
-    recovered = Column(Integer)
-    active = Column(Integer)
-
-    __table_args__ = (
-        UniqueConstraint("date", "location_id", name="unique_date_place"),
-    )
-    def __repr__(self):
-        return "<Case(Date=%s %d/%d/%d/%d)" % (self.date, self.confirmed, self.deaths, self.recovered, self.active)
 
 def match_header(header):
     # Province_State,Country_Region,Last_Update,Lat,Long_,Confirmed,Deaths,Recovered,Active,FIPS,Incident_Rate,People_Tested,People_Hospitalized,Mortality_Rate,UID,ISO3,Testing_Rate,Hospitalization_Rate
@@ -129,37 +72,23 @@ def retrieve(date):
 
 def main():
 
-    pw = ""
-    with open(".password") as f:
-        pw = f.read()
-        pw = urllib.parse.quote_plus(pw)
-    conn = "postgresql://covid:%s@localhost:5432/covid" % pw
+    init_db()
+    db_session = session()
 
-    printLogs = False
-    engine = create_engine(conn, echo=printLogs)
-
-    # create all of the tables
-    Base.metadata.create_all(engine)
-
-    Session = sessionmaker(bind=engine)
-
-    # create a new instance for queries, etc
-    session = Session()
-
-    current = get_start_date(session)
+    current = get_start_date(db_session)
 
     while current < datetime.date.today():
         d = current.strftime("%m-%d-%Y")
-        load_date(d, session)
+        load_date(d, db_session)
         current = current + datetime.timedelta(days=1)
 
-def get_start_date(session):
-    result = session.query(Case).order_by(desc(Case.date)).first()
+def get_start_date(db_session):
+    result = db_session.query(Case).order_by(desc(Case.date)).first()
     if not result:
         return datetime.date(2020, 6, 25)
     return result.date.date()
 
-def load_date(date, session):
+def load_date(date, db_session):
     # you have a pair of lists that are aligned on case and location.  
     # iterate locations to insert and get the id, then update the matched case, then insert the case
     cases, locations = retrieve(date)
@@ -168,15 +97,15 @@ def load_date(date, session):
             print("processing %d/%d records for %s" % (idx, len(locations), date))
 
         # select existing location record, or else insert
-        result = session.query(Location).filter(
+        result = db_session.query(Location).filter(
             Location.country == loc.country,
             Location.state == loc.state,
             Location.county == loc.county
         ).first()
         if result is None:
             print("creating location record", loc)
-            session.add(loc)
-            session.flush()
+            db_session.add(loc)
+            db_session.flush()
             location_id = loc.id
         else:
             location_id = result.id
@@ -185,15 +114,15 @@ def load_date(date, session):
 
         cases[idx].location_id = location_id
         # select or update case data
-        result = session.query(Case).filter(
+        result = db_session.query(Case).filter(
             Case.date == cases[idx].date,
             Case.location_id == cases[idx].location_id
         ).first()
         if result is None:
-            session.add(cases[idx])
+            db_session.add(cases[idx])
         elif result.confirmed != cases[idx].confirmed and result.deaths != cases[idx].deaths and result.recovered != cases[idx].recovered and result.active != cases[idx].active:
             print("updating case record", cases[idx])
-            session.query(Case).filter(
+            db_session.query(Case).filter(
                 Case.id == result.id
             ).update({
                 Case.confirmed: cases[idx].confirmed,
@@ -201,9 +130,9 @@ def load_date(date, session):
                 Case.recovered: cases[idx].recovered,
                 Case.active: cases[idx].active
             })
-        session.flush()
+        db_session.flush()
 
-    session.commit()
+    db_session.commit()
 
 if __name__ == "__main__":
     main()

@@ -1,14 +1,9 @@
 import json
 
-from urllib.parse import quote_plus
 from flask import Flask, jsonify, request
+from sqlalchemy import or_, and_, text
 
-from sqlalchemy import create_engine, or_, and_, text
-from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-
-from load import Location
-from load import Case
+from models import Location, Case, init_db, session
 
 app = Flask(__name__)
 
@@ -16,31 +11,12 @@ app = Flask(__name__)
     Database Setup Code
 """
 
-pw = ""
-with open(".password") as f:
-    pw = f.read()
-    pw = quote_plus(pw)
-conn = "postgresql://covid:%s@localhost:5432/covid" % pw
-
-engine = create_engine(conn, convert_unicode=True)
-db_session = scoped_session(sessionmaker(autocommit=False,
-                                         autoflush=False,
-                                         bind=engine))
-Base = declarative_base()
-Base.query = db_session.query_property()
-
-def init_db():
-    # import all modules here that might define models so that
-    # they will be registered properly on the metadata.  Otherwise
-    # you will have to import them first before calling init_db()
-    Base.metadata.create_all(bind=engine)
+init_db()
+db_session = session()
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     db_session.remove()
-
-# this is so wrong!
-init_db()
 
 
 
@@ -181,9 +157,9 @@ def cases():
     from sqlalchemy import String, cast
 
     resp = db_session.execute(s, params={
-        "country": tuple(country),
-        "state": tuple(state),
-        "county": tuple(county),
+        "country": tuple(country) or tuple("_"),
+        "state": tuple(state) or tuple("_"),
+        "county": tuple(county) or tuple("_"),
         "empty_country": len(country) == 0,
         "empty_state": len(state) == 0,
         "empty_county": len(county) == 0,

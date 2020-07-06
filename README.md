@@ -100,4 +100,16 @@ I use pipenv to set up the environment:
 
         # then run the script
         python load.py
+
+        # you can load population data with load_pop
+        # data was sourced from the us census bureau
+        python load_pop.py
 ```
+
+
+# TODO
+
+
+- get population data for each location
+- scrape statewide data for US which also contains hospitalization and testing metrics
+- figure out the issue with negative case rates

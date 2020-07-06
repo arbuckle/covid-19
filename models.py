@@ -36,6 +36,23 @@ def init_db():
     _session = db_session
 
 
+class Country(Base):
+    __tablename__ = "countries"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    population = Column(Integer)
+    area = Column(Integer)
+    density = Column(Float)
+
+    __table_args__ = (
+        UniqueConstraint("name", name="unique_name"),
+    )
+
+    def __repr__(self):
+        return "<Country(name=%s)" % self.name
+
+
 class Location(Base):
     __tablename__ = "locations"
 
@@ -47,6 +64,7 @@ class Location(Base):
     combined = Column(String)
     lat = Column(Float)
     lon = Column(Float)
+    pop = Column(Integer)
 
     cases = relationship("Case")
 
