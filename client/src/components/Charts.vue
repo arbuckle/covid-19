@@ -1,24 +1,26 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
 
-    <div class="chart">
-        <canvas id="actives"></canvas>
-    </div>
+      <div class="hello">
+        <h1>{{ msg }}</h1>
 
-    <hr>
+        <div class="chart">
+            <canvas id="actives"></canvas>
+        </div>
 
-    <div class="chart">
-        <canvas id="cumulatives"></canvas>
-    </div>
-  </div>
+        <hr>
+
+        <div class="chart">
+            <canvas id="cumulatives"></canvas>
+        </div>
+      </div>
+
 </template>
 
 <script>
 import Chart from 'chart.js'
 
 export default {
-  name: 'HelloWorld',
+  name: 'Charts',
   props: {
     msg: String,
     data: Array
@@ -47,6 +49,7 @@ export default {
       this.activeCases = []
       this.newCases = []
       this.cgr = []
+      this.cgrLine = []
 
       this.cumLabels = []
       this.cases = []
@@ -68,6 +71,7 @@ export default {
             this.activeCases.push(c.active_cases - c.new_cases)
             this.newCases.push(c.new_cases)
             this.cgr.push(c.cgr)
+            this.cgrLine.push(100)
           }
       }
     },
@@ -78,12 +82,15 @@ export default {
         easing: 'easeInCubic'
       }
 
+      this.chartActive.data.labels = this.aggLabels
       this.chartActive.data.datasets[0].data = this.activeCases
       this.chartActive.data.datasets[1].data = this.newCases
       this.chartActive.data.datasets[2].data = this.cgr
+      this.chartActive.data.datasets[3].data = this.cgrLine
 
       this.chartActive.update(updateOpts)
 
+      this.chartCumulative.data.labels = this.cumLabels
       this.chartCumulative.data.datasets[0].data = this.cases
       this.chartCumulative.data.datasets[1].data = this.deaths
       this.chartCumulative.data.datasets[2].data = this.inc
@@ -165,13 +172,28 @@ export default {
                   data: this.cgr,
                   type: 'line',
                   yAxisID: 'right'
-
+              },
+              {
+                  label: 'omit',
+                  pointRadius: 0,
+                  fill: false,
+                  data: this.cgrLine,
+                  type: 'line',
+                  yAxisID: 'right'
               }
               ]
           },
           options: {
               responsive: true,
               maintainAspectRatio: false,
+              legend:{
+                labels: {
+                  filter: (leg) => {
+                    if (leg.text === 'omit') { return }
+                    return leg
+                  }
+                }
+              },
               scales: {
                   yAxes: [{
                       id: 'left',
@@ -186,7 +208,7 @@ export default {
                   type: 'linear',
                   position: 'right',
                   ticks: {
-                      beginAtZero: true
+                      beginAtZero: false
                   }
               }]
               }

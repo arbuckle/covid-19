@@ -214,9 +214,9 @@
 
         <script>
 
-        //p = axios.get("http://127.0.0.1:5000/cases?country=US&state=Colorado&county=Denver&county=Boulder&County=Broomfield&county=Jefferson&county=Arapahoe&county=Adams&cgr_window=3&case_duration=12")
-        p = axios.get("http://127.0.0.1:5000/cases?country=US&state=Florida&county=Brevard&cgr_window=5&case_duration=12")
-        // p = axios.get("http://127.0.0.1:5000/cases?country=US&state=Colorado&cgr_window=5&case_duration=12")
+        // p = axios.get("http://127.0.0.1:5000/cases?country=US&state=Colorado&county=Denver&county=Boulder&County=Broomfield&county=Jefferson&county=Arapahoe&county=Adams&cgr_window=3&case_duration=12")
+        // p = axios.get("http://127.0.0.1:5000/cases?country=US&state=Florida&county=Brevard&cgr_window=5&case_duration=12")
+        p = axios.get("http://127.0.0.1:5000/cases?country=US&state=Colorado&cgr_window=5&case_duration=12")
         // p = axios.get("http://127.0.0.1:5000/cases?country=China&case_duration=12&cgr_window=5")
         p.then((resp) => {
 
@@ -249,6 +249,7 @@
                 }
             }
 
+            
             var ctx = document.getElementById('cumulatives');
             var cChart = new Chart(ctx, {
                 type: 'bar',
