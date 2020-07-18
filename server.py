@@ -1,11 +1,13 @@
 import json
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS
 from sqlalchemy import or_, and_, text
 
-from models import Location, Case, init_db, session
+from covid19.models import Location, Case, init_db, session
 
 app = Flask(__name__)
+CORS(app, resources={r"*": {"origins": "*"}})
 
 """ 
     Database Setup Code
@@ -38,10 +40,7 @@ def shutdown_session(exception=None):
 
 @app.route('/')
 def hello_world():
-    result = db_session.query(Location).first()
-    s = result.json()
-    return jsonify(s)
-
+    return send_from_directory('templates', 'home.html')
 
 @app.route("/location", methods=['GET'])
 def locations():
@@ -100,8 +99,9 @@ def cases():
            WITH cte AS (
             SELECT
                     date_trunc('day', date) as date,
-                    sum(confirmed) as cases,
-                    sum(deaths) as deaths
+                    cast(sum(pop) as float) as pop,
+                    cast(sum(confirmed) as float) as cases,
+                    cast(sum(deaths) as float) as deaths
             FROM cases c 
                 JOIN locations l ON c.location_id = l.id
             WHERE 1=1
@@ -123,33 +123,34 @@ def cases():
                     date,
                     cases,
                     deaths,
+                    pop,
 
-                    cast(lag(cases, 7) over (
+                    (cases / pop) * 100000 as incidence,
+
+                    (cases - lag(cases, 1) over (
                             ORDER BY date
-                    ) as float) as prev_week,
+                    )) as new_cases,
 
-                    (cases - cast(lag(cases, 1) over (
+                    (deaths - lag(deaths, 1) over (
                             ORDER BY date
-                    ) as float)) as new_cases,
+                    )) as new_deaths,
 
-                    (deaths - cast(lag(deaths, 1) over (
+
+                    (cases - lag(cases, :active_case_duration) over (
                             ORDER BY date
-                    ) as float)) as new_deaths,
-
-
-                    (cases - cast(lag(cases, :active_case_duration) over (
-                            ORDER BY date
-                    ) as float)) as active_cases,
+                    )) as active_cases,
 
                     (
-                        (cases - cast(lag(cases, :active_case_duration) over (
+                        (cases - lag(cases, :active_case_duration) over (
                             ORDER BY date
-                            ) as float))
+                            ))
                         /
-                        (lag(cases, :cgr_window)  over (ORDER BY date) - cast(lag(cases, :cgr_window + :active_case_duration) over (
+                        (lag(cases, :cgr_window)  over (ORDER BY date) - lag(cases, :cgr_window + :active_case_duration) over (
                             ORDER BY date
-                        ) as float))
+                        ))
                     ) ^  (1.0/5.0) * 100 as cgr
+
+
             FROM cte
         """
     )
@@ -168,6 +169,7 @@ def cases():
         }
     ).fetchall()
     out = [case(r) for r in resp]
+    # out = [c for c in out if c["cgr"]]
     return jsonify(out)
 
 def case(case_row):
@@ -176,8 +178,10 @@ def case(case_row):
         "date": case_row[0],
         "cases": case_row[1],
         "deaths": case_row[2],
-        "new_cases": case_row[4],
-        "new_deaths": case_row[5],
-        "active_cases": case_row[6],
-        "cgr": case_row[7]
+        "pop": case_row[3],
+        "incidence": case_row[4],
+        "new_cases": case_row[5],
+        "new_deaths": case_row[6],
+        "active_cases": case_row[7],
+        "cgr": case_row[8]
     }

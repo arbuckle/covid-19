@@ -6,10 +6,10 @@ import urllib.parse
 from sqlalchemy import desc
 from models import *
 
+expectedHeader = ['FIPS', 'Admin2', 'Province_State', 'Country_Region', 'Last_Update', 'Lat', 'Long_', 'Confirmed', 'Deaths', 'Recovered', 'Active', 'Combined_Key']
 
 def match_header(header):
     # Province_State,Country_Region,Last_Update,Lat,Long_,Confirmed,Deaths,Recovered,Active,FIPS,Incident_Rate,People_Tested,People_Hospitalized,Mortality_Rate,UID,ISO3,Testing_Rate,Hospitalization_Rate
-    expectedHeader = ['FIPS', 'Admin2', 'Province_State', 'Country_Region', 'Last_Update', 'Lat', 'Long_', 'Confirmed', 'Deaths', 'Recovered', 'Active', 'Combined_Key']
     for i in expectedHeader:
         match = False
         for j in header:
@@ -21,7 +21,8 @@ def match_header(header):
     return True
 
 def retrieve(date):
-    url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/%s.csv" % date
+    d = date.strftime('%m-%d-%Y')
+    url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/%s.csv" % d
     print("getting url - %s" % url)
 
     resp = requests.get(url)
@@ -59,7 +60,7 @@ def retrieve(date):
             print("error parsing active cases for %s" % row[11])
         active = 0
         c = Case(
-            date=row[4],
+            date=date,
             confirmed=int(row[7]),
             deaths=int(row[8]),
             recovered=int(row[9]),
@@ -78,14 +79,13 @@ def main():
     current = get_start_date(db_session)
 
     while current < datetime.date.today():
-        d = current.strftime("%m-%d-%Y")
-        load_date(d, db_session)
+        load_date(current, db_session)
         current = current + datetime.timedelta(days=1)
 
 def get_start_date(db_session):
     result = db_session.query(Case).order_by(desc(Case.date)).first()
     if not result:
-        return datetime.date(2020, 6, 25)
+        return datetime.date(2020, 3, 1)
     return result.date.date()
 
 def load_date(date, db_session):
@@ -110,17 +110,15 @@ def load_date(date, db_session):
         else:
             location_id = result.id
 
-        
-
         cases[idx].location_id = location_id
         # select or update case data
         result = db_session.query(Case).filter(
-            Case.date == cases[idx].date,
+            Case.date == date,
             Case.location_id == cases[idx].location_id
         ).first()
         if result is None:
             db_session.add(cases[idx])
-        elif result.confirmed != cases[idx].confirmed and result.deaths != cases[idx].deaths and result.recovered != cases[idx].recovered and result.active != cases[idx].active:
+        elif result.confirmed > cases[idx].confirmed or result.deaths > cases[idx].deaths or result.recovered > cases[idx].recovered or result.active > cases[idx].active:
             print("updating case record", cases[idx])
             db_session.query(Case).filter(
                 Case.id == result.id
@@ -130,8 +128,8 @@ def load_date(date, db_session):
                 Case.recovered: cases[idx].recovered,
                 Case.active: cases[idx].active
             })
-        db_session.flush()
 
+    db_session.flush()
     db_session.commit()
 
 if __name__ == "__main__":

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        /* reset from https://dev.to/hankchizljaw/a-modern-css-reset-6p3 */
+        /* Box sizing rules */
+        *,
+        *::before,
+        *::after {
+        box-sizing: border-box;
+        }
+
+        /* Remove default padding */
+        ul[class],
+        ol[class] {
+        padding: 0;
+        }
+
+        /* Remove default margin */
+        body,
+        h1,
+        h2,
+        h3,
+        h4,
+        p,
+        ul[class],
+        ol[class],
+        li,
+        figure,
+        figcaption,
+        blockquote,
+        dl,
+        dd {
+        margin: 0;
+        }
+
+        /* Set core body defaults */
+        body {
+        min-height: 100vh;
+        scroll-behavior: smooth;
+        text-rendering: optimizeSpeed;
+        line-height: 1.5;
+        background-color: #333;
+        color: #e3e3e3;
+        margin: 20px;
+        }
+
+        /* Remove list styles on ul, ol elements with a class attribute */
+        ul[class],
+        ol[class] {
+        list-style: none;
+        }
+
+        /* A elements that don't have a class get default styles */
+        a:not([class]) {
+        text-decoration-skip-ink: auto;
+        }
+
+        /* Make images easier to work with */
+        img {
+        max-width: 100%;
+        display: block;
+        }
+
+        /* Natural flow and rhythm in articles by default */
+        article > * + * {
+        margin-top: 1em;
+        }
+
+        /* Inherit fonts for inputs and buttons */
+        input,
+        button,
+        textarea,
+        select {
+        font: inherit;
+        }
+
+        /* Remove all animations and transitions for people that prefer not to see them */
+        @media (prefers-reduced-motion: reduce) {
+        * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+        }
+    </style>
+
+    <style>
+        .chart {
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+    <title>
+        Dave's Covid Tracker
+    </title>
+</head>
+<body>
+    <div id="content">
+
+        <div class="stats">
+            <div id="app">
+                xxx {{ message }} xxx
+                <div>
+                {{ ffs }} / {{ locLoaded}}
+                    <div v-for="data, loc in locations">
+                        {{ loc }}
+                    </div>
+                </div>
+            </div>
+
+
+            Time to make a fat client app! <br/><br/>
+            Country:
+            State:
+            County:
+
+            Population
+            Incidence
+            Total Cases
+            Active Cases
+            Total Deaths
+
+            New Cases
+            New Deaths
+
+            N-Day Compound Growth Rate
+
+            Gathering Risk
+        </div>
+
+        <div class="chart">
+            <canvas id="actives"></canvas>
+        </div>
+        <div class="chart">
+            <canvas id="cumulatives"></canvas>
+        </div>
+
+
+        <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.11/vue.min.js" integrity="sha512-QJsj3afWlCpnQ60XzzYE8Jb3IgHIK1BcGZox9rUSmRRq3Ocz9vQ1yR80eX2/b9jfx/UuT5zYWNdrM8Te/eCMhQ==" crossorigin="anonymous"></script>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js" integrity="sha512-VZ6m0F78+yo3sbu48gElK4irv2dzPoep8oo9LEjxviigcnnnNvnTOJRSrIhuFk68FMLOpiNz+T77nNY89rnWDg==" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js" integrity="sha512-vBmx0N/uQOXznm/Nbkp7h0P1RfLSj0HQrFSzV8m7rOGyj30fYAOKHYvCNez+yM8IrfnW0TCodDEjRqf6fodf/Q==" crossorigin="anonymous"></script>
+
+        <script>
+            let addr = 'http://127.0.0.1:5000'
+
+
+            Vue.use(VueRouter)
+
+            var app = new Vue({
+            el: '#app',
+            data: {
+                message: 'Hello Vue!',
+                locLoaded: false,
+                locRaw: [],
+
+                selCountries: [],
+                selStates: [],
+                selCounties: []
+            },
+            computed: {
+                ffs: function(){
+                    console.log(this.$route.query.test) 
+                    return this.locLoaded
+                },
+                locations: function() {
+                    let top = {}
+                    if (this.locLoaded) {
+                        console.log("wat")
+                    } else {
+                        console.log("yeah")
+                    }
+                    this.locRaw.forEach(el => {
+                        // Processing data to make a little hierarchy.  
+                        // Ideally the API would return aggregations and children
+                        let country = el.country
+                        let state = el.state
+                        let county = el.county
+
+                        if (top[country] === undefined) {
+                            top[country] = {
+                                name: country,
+                                states: {}
+                            }
+                        }
+                        if (state === "") {return}
+
+                        if (top[country].states[state] === undefined) {
+                            top[country].states[state] = {
+                                name: state,
+                                counties: []
+                            }
+                        }
+                        if (county === "") {return}
+
+                        top[country].states[state].counties.push(el)
+                    });
+                    return top
+                }
+            },
+            created: function() {
+                axios.get(addr+"/location").then((resp) => {
+                    // TODO: check error
+                    console.log(resp.data)
+                    this.locRaw = resp.data
+                    this.locLoaded = true
+                })
+            }
+            })
+        </script>
+
+        <script>
+
+        //p = axios.get("http://127.0.0.1:5000/cases?country=US&state=Colorado&county=Denver&county=Boulder&County=Broomfield&county=Jefferson&county=Arapahoe&county=Adams&cgr_window=3&case_duration=12")
+        p = axios.get("http://127.0.0.1:5000/cases?country=US&state=Florida&county=Brevard&cgr_window=5&case_duration=12")
+        // p = axios.get("http://127.0.0.1:5000/cases?country=US&state=Colorado&cgr_window=5&case_duration=12")
+        // p = axios.get("http://127.0.0.1:5000/cases?country=China&case_duration=12&cgr_window=5")
+        p.then((resp) => {
+
+            console.log(resp)
+
+            var aggLabels = []
+            var activeCases = []
+            var newCases = []
+            var cgr = []
+
+            var cumLabels = []
+            var cases = []
+            var deaths = []
+            var inc = []
+
+            for (var i = 0; i < resp.data.length; i++) {
+                let c = resp.data[i]
+                d = new Date(c.date)
+
+                cumLabels.push(d.toISOString().split('T')[0])
+                deaths.push(c.deaths)
+                cases.push(c.cases)
+                inc.push(c.incidence)
+
+                if (c.cgr && c.active_cases) {
+                    aggLabels.push(d.toISOString().split('T')[0])
+                    activeCases.push(c.active_cases - c.new_cases)
+                    newCases.push(c.new_cases)
+                    cgr.push(c.cgr)
+                }
+            }
+
+            var ctx = document.getElementById('cumulatives');
+            var cChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: cumLabels,
+                    datasets: [
+                    {
+                        label: 'Total Cases',
+                        data: cases,
+                        backgroundColor: '#3333ff',
+                        yAxisID: 'left'
+                    },
+                    {
+                        label: 'Total Deaths',
+                        data: deaths,
+                        backgroundColor: '#993333',
+                        yAxisID: 'left'
+                    },
+                    {
+                        label: 'Incidence',
+                        data: inc,
+                        type: 'line',
+                        yAxisID: 'right'
+
+                    }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        yAxes: [{
+                            id: 'left',
+                            position: 'left',
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        },
+                    {
+                        id: 'right',
+                        type: 'linear',
+                        position: 'right',
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
+                    }
+                }
+            })
+
+            var ctx = document.getElementById('actives');
+            var aggChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: aggLabels,
+                    datasets: [
+                    {
+                        label: 'Active Cases',
+                        data: activeCases,
+                        backgroundColor: '#3333ff',
+                        yAxisID: 'left'
+                    },
+                    {
+                        label: 'New Cases',
+                        data: newCases,
+                        backgroundColor: '#993333',
+                        yAxisID: 'left'
+                    },
+                    {
+                        label: 'Growth Rate',
+                        data: cgr,
+                        type: 'line',
+                        yAxisID: 'right'
+
+                    }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        yAxes: [{
+                            id: 'left',
+                            position: 'left',
+                            stacked: true,
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        },
+                    {
+                        id: 'right',
+                        type: 'linear',
+                        position: 'right',
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
+                    }
+                }
+            });
+
+
+
+
+
+
+
+        })
+        </script>
+    </div>
+    <div id="footer">
+        &copy; Copyright 2020 Dave
+    </div>
+</body>
+</html>

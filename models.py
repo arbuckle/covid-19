@@ -23,14 +23,15 @@ def init_db():
         pw = quote_plus(pw)
     conn = "postgresql://covid:%s@localhost:5432/covid" % pw
 
-    engine = create_engine(conn, convert_unicode=True)
+    engine = create_engine(conn, convert_unicode=True, echo=True)
     db_session = scoped_session(sessionmaker(autocommit=False,
                                             autoflush=False,
                                             bind=engine))
 
-    Base = declarative_base()
     Base.query = db_session.query_property()
     Base.metadata.create_all(bind=engine)
+
+    print('wat')
 
     global _session
     _session = db_session
@@ -85,7 +86,8 @@ class Location(Base):
             "country": self.country,
             "combined": self.combined,
             "lat": self.lat,
-            "lon": self.lon
+            "lon": self.lon,
+            "pop": self.pop or -1,
         }
         return out
 
