@@ -1,74 +1,91 @@
 <template>
   <div class="home">
-    <div class="field">
-           <ui-select
-                label="Country"
-                placeholder="Select one or more countries"
-                :options="countries"
-                v-model="selectedCountries"
-                v-on:change="makeStates()"
-                has-search
-                multiple
-            ></ui-select>
+    <div class="top">
+      <div class="selection">
+        <div class="field">
+          <ui-select
+              label="Country"
+              placeholder="Select one or more countries"
+              :options="countries"
+              v-model="selectedCountries"
+              v-on:change="makeStates()"
+              has-search
+              multiple
+          ></ui-select>
+        </div>
+        <div class="field">
+          <ui-select
+              label="State"
+              placeholder="Select one or more states"
+              :options="states"
+              v-model="selectedStates"
+              v-on:change="makeCounties()"
+              :disabled="(selectedCountries.length === 0)"
+              has-search
+              multiple
+          ></ui-select>
+        </div>
+        <div class="field">
+        <ui-select
+              label="County"
+              placeholder="Select one or more counties"
+              :options="counties"
+              v-model="selectedCounties"
+              :disabled="(selectedStates.length === 0)"
+              has-search
+              multiple
+          ></ui-select>
+        </div>
+        <div class="field">
+          <label>{{ cgr }}-day Compound Growth Rate</label>
+          <ui-slider
+              show-marker
+              snap-to-steps
 
-           <ui-select
-                label="State"
-                placeholder="Select one or more states"
-                :options="states"
-                v-model="selectedStates"
-                v-on:change="makeCounties()"
-                :disabled="(selectedCountries.length === 0)"
-                has-search
-                multiple
-            ></ui-select>
+              :step="1"
+              :min="1"
+              :max="10"
 
-           <ui-select
-                label="County"
-                placeholder="Select one or more counties"
-                :options="counties"
-                v-model="selectedCounties"
-                :disabled="(selectedStates.length === 0)"
-                has-search
-                multiple
-            ></ui-select>
+              v-model="cgr"
+          ></ui-slider>
+        </div>
+        <div class="field">
+          <label>Case Duration ({{ dur }} days)</label>
+          <ui-slider
+              show-marker
+              snap-to-steps
 
-            <ui-slider
-              label="N-day Compound Growth Rate"
-                show-marker
-                snap-to-steps
+              :step="1"
+              :min="1"
+              :max="21"
 
-                :step="1"
-                :min="1"
-                :max="10"
+              v-model="dur"
+          ></ui-slider>
+        </div>
+        <div class="field">
+          <ui-button
+            v-on:click="redraw()"
+          >
+            Get Results
+          </ui-button>
+        </div>
+      </div>
 
-                v-model="cgr"
-            ></ui-slider>
-
-            <ui-slider
-              label="Case Duration"
-                show-marker
-                snap-to-steps
-
-                :step="1"
-                :min="1"
-                :max="21"
-
-                v-model="dur"
-            ></ui-slider>
-
-            <ui-button
-              v-on:click="redraw()"
-            >
-              Get Results
-            </ui-button>
+      <div class="stats">
+        <Stats :loc="locData" :cases="chartData" :cgr="cgr" />
+      </div>
     </div>
 
-    <Charts :data="cumulative" />
+    <div class="charts">
+      <Charts :data="chartData" />
+    </div>
+
   </div>
 </template>
 
 <script>
 // @ is an alias to /src
+import Stats from '@/components/Stats.vue'
 import Charts from '@/components/Charts.vue'
 import axios from 'axios'
 
@@ -78,7 +95,8 @@ export default {
   name: 'Home',
   data: () => {
     return {
-      cumulative: [],
+      chartData: [],
+      locData: [],
 
       // carriers of raw data used to retrieve filtered lists
       selCountry: undefined,
@@ -89,10 +107,10 @@ export default {
       states: [],
       counties: [],
 
-      cgr: 5,
+      cgr: 7,
       dur: 12,
-      selectedCountries: [],
-      selectedStates: [],
+      selectedCountries: ["US"],
+      selectedStates: ["Colorado"],
       selectedCounties: [],
     }
   },
@@ -136,11 +154,9 @@ export default {
       out.sort()
       this.counties = out
     },
-    redraw: function(){
-
-      let url = base + "/cases?cgr_window=" + this.cgr
+    query: function () {
+      let url = "?cgr_window=" + this.cgr
       url = url + "&case_duration=" + this.dur
-
       for (let i in this.selectedCountries) {
         url = url + '&country=' + this.selectedCountries[i]
       }
@@ -150,13 +166,17 @@ export default {
       for (let i in this.selectedCounties) {
         url = url + '&county=' + this.selectedCounties[i]
       }
+      return url
+    },
+    redraw: function(){
 
-      let p = axios.get(url)
       let that = this
-      p.then((resp) => {
-        that.cumulative = resp.data
-      })
 
+      let cases = base + "/cases" + this.query()
+      let p = axios.get(cases)
+      p.then((resp) => {
+        that.chartData = resp.data
+      })
 
     }
   },
@@ -186,20 +206,27 @@ export default {
       })
 
       that.makeCountries()
+      that.makeStates()
+      that.makeCounties()
+      that.redraw()
     })
-    // build the list of countries.  
-    // get all locations
-    // extract a list of unique countries
-    // extract a list of states for each country
-    // extract a list of counties for each country+state
-
   },
   components: {
-    Charts
+    Charts,
+    Stats
   }
 }
 </script>
 
-<style global>
-
+<style >
+  .top {
+    display: flex
+  }
+  .home .selection {
+    flex: 1 1 40%;
+    margin-right: 40px;
+  }
+  .home .stats {
+    flex: 1 1 60%;
+  }
 </style>
