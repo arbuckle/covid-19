@@ -16,12 +16,15 @@ def session():
 
 
 
-def init_db():
-    pw = ""
-    with open(".password") as f:
-        pw = f.read()
-        pw = quote_plus(pw)
-    conn = "postgresql://covid:%s@localhost:5432/covid" % pw
+def init_db(dbhost, dbuser, dbpass):
+    pw = dbpass
+    if pw == '':
+        pw = ""
+        with open(".password") as f:
+            pw = f.read()
+            pw = quote_plus(pw)
+    
+    conn = "postgresql://%s:%s@%s:5432/covid" % (dbuser, pw, dbhost)
 
     engine = create_engine(conn, convert_unicode=True, echo=True)
     db_session = scoped_session(sessionmaker(autocommit=False,

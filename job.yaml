@@ -1,0 +1,31 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: load-data
+  namespace: covid
+spec:
+  schedule: "5 5 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          imagePullSecrets:
+          - name: regcred
+          containers:
+          - name: load
+            image: ghcr.io/arbuckle/covid:4
+            command: ["python", "load.py"] # then run this
+            # command: ["python", "load.py"] # run this first
+            env:
+            - name: DO_COUNTRIES # first do countries, then states?
+              value: 'yes'
+            - name: DO_STATES # first do countries, then states?
+              value: 'yes'
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: covid
+                  key: db_pass
+            - name: POSTGRES_SERVICE_HOST
+              value: database.covid.svc.cluster.local
+          restartPolicy: OnFailure

@@ -1,0 +1,84 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: database
+  name: database
+  namespace: covid
+spec:
+  replicas: 1
+  serviceName: database
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+    spec:
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - name: postgres
+        image: ghcr.io/arbuckle/postgres:13
+        env:
+        - name: PGDATA
+          value: /mnt/data/pgdata
+        - name: POSTGRES_PASSWORD_FILE
+          value: /mnt/.password/db_pass
+        - name: POSTGRES_DB
+          value: covid
+        - name: POSTGRES_USER
+          value: covid
+        volumeMounts:
+        - name: db-pass
+          mountPath: /mnt/.password
+          readOnly: true
+        - name: db-data
+          mountPath: /mnt/data/
+        ports:
+        - containerPort: 5432
+          name: data
+          protocol: TCP
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          periodSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+          timeoutSeconds: 1
+          initialDelaySeconds: 5
+        resources:
+          limits:
+            memory: 8Gi
+            cpu: 4
+          requests:
+            cpu: 100m
+            memory: 500Mi
+      volumes:
+      - name: db-pass
+        secret:
+          secretName: covid
+      - name: db-data
+        hostPath:
+          path: /volumes/covid/
+          type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database
+  namespace: covid
+  labels: 
+    app: database
+spec:
+  type: ClusterIP
+  selector: 
+    app: database
+  ports:
+  - protocol: TCP
+    port: 5432
+    targetPort: 5432
+    name: data

@@ -1,4 +1,5 @@
 import json
+import os
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
@@ -13,7 +14,12 @@ CORS(app, resources={r"*": {"origins": "*"}})
     Database Setup Code
 """
 
-init_db()
+dbhost = os.getenv('POSTGRES_SERVICE_HOST', '127.0.0.1')
+dbuser = os.getenv('POSTGRES_USER', 'covid')
+dbpass = os.getenv('POSTGRES_PASSWORD', '')
+prefix = os.getenv('API_PREFIX', '')
+
+init_db(dbhost, dbuser, dbpass)
 db_session = session()
 
 @app.teardown_appcontext
@@ -38,11 +44,11 @@ def shutdown_session(exception=None):
 """
 
 
-@app.route('/')
+@app.route(prefix + '/')
 def hello_world():
     return send_from_directory('templates', 'home.html')
 
-@app.route("/location", methods=['GET'])
+@app.route(prefix + "/location", methods=['GET'])
 def locations():
     country = request.args.to_dict(flat=False).get('country', [])
     state = request.args.to_dict(flat=False).get('state', [])
@@ -83,7 +89,7 @@ def valid_int(i, default):
 
     return out
 
-@app.route("/cases", methods=["GET"])
+@app.route(prefix + "/cases", methods=["GET"])
 def cases():
     country = request.args.to_dict(flat=False).get('country', [])
     state = request.args.to_dict(flat=False).get('state', [])

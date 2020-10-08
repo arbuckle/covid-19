@@ -1,3 +1,4 @@
+import os
 import csv
 from sqlalchemy import update
 from models import Location, init_db, session
@@ -79,7 +80,11 @@ def load_countries(db_session):
 
 
 def main(do_states, do_countries):
-    init_db()
+    dbhost = os.getenv('POSTGRES_SERVICE_HOST', '127.0.0.1')
+    dbuser = os.getenv('POSTGRES_USER', 'covid')
+    dbpass = os.getenv('POSTGRES_PASSWORD', '')
+
+    init_db(dbhost, dbuser, dbpass)
     db_session = session()
 
     if do_states:
@@ -90,4 +95,6 @@ def main(do_states, do_countries):
 
 
 if __name__ == "__main__":
-    main(True, True)
+    states = os.getenv('DO_STATES', None)
+    countries = os.getenv('DO_COUNTRIES', None)
+    main(states is not None, countries is not None)

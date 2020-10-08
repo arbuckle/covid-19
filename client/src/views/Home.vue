@@ -89,7 +89,7 @@ import Stats from '@/components/Stats.vue'
 import Charts from '@/components/Charts.vue'
 import axios from 'axios'
 
-let base = "http://127.0.0.1:5000"
+let base = 'http://127.0.0.1:5000'
 
 export default {
   name: 'Home',

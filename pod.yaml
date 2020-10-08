@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: loadup
+  namespace: covid
+spec:
+  imagePullSecrets:
+  - name: regcred
+  containers:
+  - name: load
+    image: ghcr.io/arbuckle/covid:4
+    command: ["python", "load_pop.py"] # then run this
+    # command: ["python", "load.py"] # run this first
+    env:
+    - name: DO_COUNTRIES # first do countries, then states?
+      value: 'yes'
+    - name: DO_STATES # first do countries, then states?
+      value: 'yes'
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: covid
+          key: db_pass
+    - name: POSTGRES_SERVICE_HOST
+      value: database.covid.svc.cluster.local
+  restartPolicy: Never

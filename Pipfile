@@ -14,6 +14,7 @@ psycopg2-binary = "*"
 flask = "*"
 jinja2 = "*"
 flask-cors = "*"
+uwsgi = "*"
 
 [requires]
 python_version = "3.8"

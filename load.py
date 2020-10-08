@@ -1,3 +1,4 @@
+import os
 import csv
 import datetime
 import requests
@@ -7,6 +8,10 @@ from sqlalchemy import desc
 from models import *
 
 expectedHeader = ['FIPS', 'Admin2', 'Province_State', 'Country_Region', 'Last_Update', 'Lat', 'Long_', 'Confirmed', 'Deaths', 'Recovered', 'Active', 'Combined_Key']
+
+dbhost = os.getenv('POSTGRES_SERVICE_HOST', '127.0.0.1')
+dbuser = os.getenv('POSTGRES_USER', 'covid')
+dbpass = os.getenv('POSTGRES_PASSWORD', '')
 
 def match_header(header):
     # Province_State,Country_Region,Last_Update,Lat,Long_,Confirmed,Deaths,Recovered,Active,FIPS,Incident_Rate,People_Tested,People_Hospitalized,Mortality_Rate,UID,ISO3,Testing_Rate,Hospitalization_Rate
@@ -73,7 +78,7 @@ def retrieve(date):
 
 def main():
 
-    init_db()
+    init_db(dbhost, dbuser, dbpass)
     db_session = session()
 
     current = get_start_date(db_session)

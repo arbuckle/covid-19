@@ -1,0 +1,271 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: covid
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: covid-app
+  name: covid-app
+  namespace: covid
+spec:
+  progressDeadlineSeconds: 60
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: covid-app
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: covid-app
+    spec:
+      terminationGracePeriodSeconds: 5
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - name: web
+        image: ghcr.io/arbuckle/covid:1.1
+        env:
+        - name: API_PREFIX
+          value: "/api"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: covid
+              key: db_pass
+        - name: POSTGRES_SERVICE_HOST
+          value: database.covid.svc.cluster.local
+        ports:
+        - containerPort: 5000
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/
+            port: 5000
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            memory: 1Gi
+            cpu: 2
+          requests:
+            cpu: 100m
+            memory: 70Mi
+        # securityContext:
+          # allowPrivilegeEscalation: false
+          # capabilities:
+            # add:
+            # - NET_BIND_SERVICE
+            # drop:
+            # - all
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: covid
+  namespace: covid
+  labels: 
+    app: web
+spec:
+  type: ClusterIP
+  selector: 
+    app: covid-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5000
+    name: http
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-web
+  namespace: covid
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - covid.catto5k.com
+    secretName: covid-tls
+  rules:
+  - host: covid.catto5k.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: covid-client
+          servicePort: 80
+      - path: /api
+        backend:
+          serviceName: covid
+          servicePort: 80
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: database
+  name: database
+  namespace: covid
+spec:
+  replicas: 1
+  serviceName: database
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+    spec:
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - name: postgres
+        image: ghcr.io/arbuckle/postgres:13
+        env:
+        - name: PGDATA
+          value: /mnt/data/pgdata
+        - name: POSTGRES_PASSWORD_FILE
+          value: /mnt/.password/db_pass
+        - name: POSTGRES_DB
+          value: covid
+        - name: POSTGRES_USER
+          value: covid
+        volumeMounts:
+        - name: db-pass
+          mountPath: /mnt/.password
+          readOnly: true
+        - name: db-data
+          mountPath: /mnt/data/
+        ports:
+        - containerPort: 5432
+          name: data
+          protocol: TCP
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          periodSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+          timeoutSeconds: 1
+          initialDelaySeconds: 5
+        resources:
+          limits:
+            memory: 8Gi
+            cpu: 4
+          requests:
+            cpu: 100m
+            memory: 500Mi
+      volumes:
+      - name: db-pass
+        secret:
+          secretName: covid
+      - name: db-data
+        hostPath:
+          path: /volumes/covid/
+          type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database
+  namespace: covid
+  labels: 
+    app: database
+spec:
+  type: ClusterIP
+  selector: 
+    app: database
+  ports:
+  - protocol: TCP
+    port: 5432
+    targetPort: 5432
+    name: data
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: covid-client
+  name: covid-client
+  namespace: covid
+spec:
+  progressDeadlineSeconds: 60
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: covid-client
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: covid-client
+    spec:
+      terminationGracePeriodSeconds: 5
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - name: client
+        image: ghcr.io/arbuckle/covid-client:1.1
+        env:
+        - name: BACKEND_HOST
+          value: https://covid.catto5k.com
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            memory: 1Gi
+            cpu: 2
+          requests:
+            cpu: 100m
+            memory: 70Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: covid-client
+  namespace: covid
+  labels: 
+    app: web
+spec:
+  type: ClusterIP
+  selector: 
+    app: covid-client
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+    name: http
