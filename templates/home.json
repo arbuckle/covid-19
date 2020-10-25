@@ -1,0 +1,7 @@
+{
+    "note": "This API is built using open data from JHU. Please do not scrape this API. Go to https://github.com/arbuckle/covid-19 to learn how to build the database yourself.",
+    "endpoints": [
+        "location",
+        "cases"
+    ]
+}

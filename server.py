@@ -1,7 +1,7 @@
 import json
 import os
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, make_response
 from flask_cors import CORS
 from sqlalchemy import or_, and_, text
 
@@ -46,7 +46,9 @@ def shutdown_session(exception=None):
 
 @app.route(prefix + '/')
 def hello_world():
-    return send_from_directory('templates', 'home.html')
+    resp = make_response(send_from_directory('templates', 'home.json'))
+    resp.headers['Content-Type'] = 'application/json'
+    return resp
 
 @app.route(prefix + "/location", methods=['GET'])
 def locations():
@@ -120,8 +122,6 @@ def cases():
                     AND
                     (l.county IN :county OR :empty_county)
                 )
-                --AND l.county IN ('Denver', 'Jefferson', 'Arapahoe', 'Adams', 'Douglas', 'Broomfield', 'Boulder')
-                --AND l.county IN ('Summit', 'Eagle', 'Park', 'Grand', 'Lake', 'Clear Creek')
             GROUP BY date_trunc('day', date)
             ORDER BY date ASC
             )
@@ -147,14 +147,23 @@ def cases():
                     )) as active_cases,
 
                     (
-                        (cases - lag(cases, :active_case_duration) over (
-                            ORDER BY date
+                        CASE WHEN
+                            -- avoid the div0 error
+                            (lag(cases, :cgr_window)  over (ORDER BY date) - lag(cases, :cgr_window + :active_case_duration) over (ORDER BY date))
+                            = 0
+                        THEN
+                            0
+                        ELSE 
+                            -- (current_cases/starting_cases) ^ (1/cgr_window)
+                            (cases - lag(cases, :active_case_duration) over (
+                                ORDER BY date
+                                ))
+                            /
+                            (lag(cases, :cgr_window)  over (ORDER BY date) - lag(cases, :cgr_window + :active_case_duration) over (
+                                ORDER BY date
                             ))
-                        /
-                        (lag(cases, :cgr_window)  over (ORDER BY date) - lag(cases, :cgr_window + :active_case_duration) over (
-                            ORDER BY date
-                        ))
-                    ) ^  (1.0/5.0) * 100 as cgr
+                        END
+                    ) ^  (1.0/:cgr_window) * 100 as cgr
 
 
             FROM cte
