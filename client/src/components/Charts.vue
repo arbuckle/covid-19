@@ -1,7 +1,23 @@
 <template>
 
       <div class="hello">
-        <h1>{{ msg }}</h1>
+        <h2>Case Data</h2>
+
+          <div class="field">
+            Date Range
+            <label>({{ dur }} days)</label>
+            <ui-slider
+                show-marker
+                snap-to-steps
+
+                :step="1"
+                :min="0"
+                :max="aggLabels.length"
+
+                v-on:change="updateCharts()"
+                v-model="dur"
+            ></ui-slider>
+          </div>
 
         <div class="chart">
             <canvas id="actives"></canvas>
@@ -29,6 +45,8 @@ export default {
     return {
       cumulativeCtx: undefined,
       activeCtx: undefined,
+
+      dur: 90, // days of chart to plot
 
       aggLabels: [],
       activeCases: [],
@@ -78,22 +96,31 @@ export default {
     updateCharts: function() {
 
       let updateOpts = {
-        duration: 300,
+        duration: 10,
         easing: 'easeInCubic'
       }
 
-      this.chartActive.data.labels = this.aggLabels
-      this.chartActive.data.datasets[0].data = this.activeCases
-      this.chartActive.data.datasets[1].data = this.newCases
-      this.chartActive.data.datasets[2].data = this.cgr
-      this.chartActive.data.datasets[3].data = this.cgrLine
+      // splice this mother... how? 
+      // all the charts are equally sized...
+      // get 'dur' value 
+      // (this.aggLabels.length - dur > 0) ? this.aggLabels.length - dur : 0 
+
+      let d = this.dur+1
+      let n = this.aggLabels.length - d
+      let ix = n > 0 ? n : 0
+
+      this.chartActive.data.labels = this.aggLabels.slice(ix)
+      this.chartActive.data.datasets[0].data = this.activeCases.slice(ix)
+      this.chartActive.data.datasets[1].data = this.newCases.slice(ix)
+      this.chartActive.data.datasets[2].data = this.cgr.slice(ix)
+      this.chartActive.data.datasets[3].data = this.cgrLine.slice(ix)
 
       this.chartActive.update(updateOpts)
 
-      this.chartCumulative.data.labels = this.cumLabels
-      this.chartCumulative.data.datasets[0].data = this.cases
-      this.chartCumulative.data.datasets[1].data = this.deaths
-      this.chartCumulative.data.datasets[2].data = this.inc
+      this.chartCumulative.data.labels = this.cumLabels.slice(ix)
+      this.chartCumulative.data.datasets[0].data = this.cases.slice(ix)
+      this.chartCumulative.data.datasets[1].data = this.deaths.slice(ix)
+      this.chartCumulative.data.datasets[2].data = this.inc.slice(ix)
       this.chartCumulative.update(updateOpts)
 
     },
@@ -101,26 +128,30 @@ export default {
       this.cumulativeCtx = document.getElementById('cumulatives')
       this.activeCtx = document.getElementById('actives')
 
+      let d = this.dur+1
+      let n = this.aggLabels.length - d
+      let ix = n > 0 ? n : 0
+
       this.chartCumulative = new Chart(this.cumulativeCtx, {
           type: 'bar',
           data: {
-              labels: this.cumLabels,
+              labels: this.cumLabels.slice(ix),
               datasets: [
               {
                   label: 'Total Cases',
-                  data: this.cases,
+                  data: this.cases.slice(ix),
                   backgroundColor: '#3333ff',
                   yAxisID: 'left'
               },
               {
                   label: 'Total Deaths',
-                  data: this.deaths,
+                  data: this.deaths.slice(ix),
                   backgroundColor: '#993333',
                   yAxisID: 'left'
               },
               {
                   label: 'Incidence',
-                  data: this.inc,
+                  data: this.inc.slice(ix),
                   type: 'line',
                   yAxisID: 'right'
 
@@ -153,23 +184,23 @@ export default {
       this.chartActive = new Chart(this.activeCtx, {
           type: 'bar',
           data: {
-              labels: this.aggLabels,
+              labels: this.aggLabels.slice(ix),
               datasets: [
               {
                   label: 'Active Cases',
-                  data: this.activeCases,
+                  data: this.activeCases.slice(ix),
                   backgroundColor: '#3333ff',
                   yAxisID: 'left'
               },
               {
                   label: 'New Cases',
-                  data: this.newCases,
+                  data: this.newCases.slice(ix),
                   backgroundColor: '#993333',
                   yAxisID: 'left'
               },
               {
                   label: 'Growth Rate',
-                  data: this.cgr,
+                  data: this.cgr.slice(ix),
                   type: 'line',
                   yAxisID: 'right'
               },
@@ -177,7 +208,7 @@ export default {
                   label: 'omit',
                   pointRadius: 0,
                   fill: false,
-                  data: this.cgrLine,
+                  data: this.cgrLine.slice(ix),
                   type: 'line',
                   yAxisID: 'right'
               }
@@ -195,6 +226,9 @@ export default {
                 }
               },
               scales: {
+                xAxes: [{
+                  stacked: true,
+                  }],
                   yAxes: [{
                       id: 'left',
                       position: 'left',
@@ -243,4 +277,9 @@ export default {
       width: 100%;
       height: 400px;
   }
+
+  h2 {
+    margin: 20px 0;
+  }
+
 </style>

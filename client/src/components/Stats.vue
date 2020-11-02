@@ -1,10 +1,10 @@
 <template>
     <div class="stats">
-        <table>
+        <table class="stat-table">
           <thead>
             <tr>
-              <td>Data</td>
-              <td>Value</td>
+              <td>Location Data</td>
+              <td></td>
             </tr>
           </thead>
           <tbody>
@@ -22,10 +22,7 @@
               <td>{{ incidence }} per 100k</td>
             </tr>
 
-            <tr>
-              <td></td>
-              <td></td>
-            </tr>
+            <tr class="spacer"></tr>
 
             <tr>
               <td>Total Cases</td>
@@ -40,10 +37,7 @@
               <td>{{ totalDeaths }}</td>
             </tr>
 
-            <tr>
-              <td></td>
-              <td></td>
-            </tr>
+            <tr class="spacer"></tr>
 
             <tr>
               <td>New Cases</td>
@@ -54,50 +48,20 @@
               <td>{{ newDeaths }}</td>
             </tr>
 
-            <tr>
-              <td></td>
-              <td></td>
-            </tr>
+            <tr class="spacer"></tr>
 
             <tr>
               <td>{{ cgr }}-day Growth Rate</td>
               <td>{{ growthRate }}%</td>
             </tr>
+            <tr>
+              <td>{{ cgr }}-day Incidence</td>
+              <td>{{ windowIncidence }} per 100k</td>
+            </tr>
 
 
           </tbody>
         </table>
-
-        <div class="gathering">
-
-            <div>
-                <h2>Gathering Risks</h2>
-
-                <strong>{{ iRisk }}</strong> - probability that any individual in the population has covid <br>
-                <strong>{{ iSafe }}%</strong> - odds that a random 1:1 encounter is safe <br>
-                <strong>{{ gRisk }}</strong> - probability that someone in a gathering of {{ size }} has covid<br>
-                <strong>{{ gSafe }}%</strong> - odds that a gathering of {{ size }} is safe <br>
-                <strong>{{ gAnnualRisk }}</strong> - probability that '{{ freqSel }}' gatherings of {{ size }} result in a covid encounter<br>
-                <strong>{{ gAnnualSafe }}%</strong> - odds that a {{ size }} people gathering '{{ freqSel }}' is safe, if done for a whole year<br>
-            </div>
-
-
-            <ui-textbox
-                help="The number of people in your gathering / how many encounters will you have"
-                label="Gathering Size"
-                placeholder="Enter gathering size"
-                type="number"
-                v-model="size"
-            ></ui-textbox>
-
-            <ui-radio-group
-                name="freq"
-                :options="['Daily', 'Weekly', 'Biweekly', 'Monthly', 'Quarterly', 'Just Once']"
-                v-model="freqSel"
-            >Gathering Frequency</ui-radio-group>
-
-        </div>
-
     </div>
 </template>
 
@@ -159,53 +123,11 @@ export default {
         let n = this.latest.cgr || 0.0
         return Math.round(n * 100) / 100
       },
-      iRisk () {
-        // returns the individual risk of someone having covid-19
-        // active cases divided by population to the power of 1
-        if (this.latest.active_cases <= 0) { return 0 }
-
-        let a = this.latest.active_cases
-        let t = this.latest.pop - this.latest.cases
-        let p = Math.pow(a / t, 1) 
-        return Math.round(p * 1000000) / 1000000
-      },
-      iSafe () {
-          return Math.round( ((1 - this.iRisk) * 100) * 1000) / 1000
-      }, 
-      gRisk () {
-        let i = 1 - this.iRisk
-        let p = 1 - Math.pow(i, this.size)
-        return Math.round(p * 1000000) / 1000000
-      },
-      gSafe () {
-          return Math.round( ((1 - this.gRisk) * 100) * 1000) / 1000
-      },
-      freq () {
-          let n = 0
-          if (this.freqSel === 'Just Once') {
-              n = 1
-          } else if (this.freqSel === 'Quarterly') {
-              n = 4
-          } else if (this.freqSel === 'Monthly') {
-              n = 12
-          } else if (this.freqSel === 'Biweekly') {
-              n = 26
-          } else if (this.freqSel === 'Weekly') {
-              n = 52
-          } else if (this.freqSel === 'Daily') {
-              n = 365
-          }
-          return n
-      },
-      gAnnualRisk () {
-          let i = 1 - this.gRisk
-          let p = 1 - Math.pow(i, this.freq)
-          return Math.round(p * 1000000) / 1000000
-      },
-      gAnnualSafe () {
-          return Math.round( ((1 - this.gAnnualRisk) * 100) * 1000) / 1000
+      windowIncidence () {
+        let n = this.latest.window_incidence || 0.0
+        n = Math.round(n, 0)
+        return this.commify(n)
       }
-
 
   },
   methods: {
@@ -226,3 +148,23 @@ export default {
 }
 
 </script>
+
+<style scoped>
+  .stat-table {
+    width: 100%;
+    margin: 0 0 40px 0;
+  }
+  .stat-table thead {
+    font-weight: bold;
+  }
+  .stat-table thead td {
+    border-bottom: 1px solid #333;
+  }
+  .stat-table tbody td {
+    border-bottom: 1px solid #ababab;
+  }
+
+  .stat-table tr.spacer {
+    height: 15px;
+  }
+</style>

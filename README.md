@@ -13,7 +13,7 @@ https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_c
 
 Case data is reported by location, and aggregated up from the local level to larger administrative or political divisions. In the US this is by country, then by state, then the whole country. In other countries the data is collected by state or province. 
 
-For each location we attempt to get a population figure. Population is important because it normalizes the case data between locations with different densities. This dataset is missing about 1.8 billion people (mostly from China), which hurts estimation of the risk factors. But for the US, comprehensive population data is currently available, populated from a census department CSV. Note that the locations database uses a single table that is not normalized. Empty values are used to determine the political division of a record in a databes - meaning, if 'country' and 'state' are populated, but 'county' is not, it's a population record for the state.
+For each location we attempt to get a population figure. Population is important because it normalizes the case data between locations with different densities. This dataset is missing about 4.5 billion people, which hurts estimation of the risk factors. But for the US, comprehensive population data is currently available, populated from a census department CSV. Note that the locations database uses a single table that is not normalized. Empty values are used to determine the political division of a record in a databes - meaning, if 'country' and 'state' are populated, but 'county' is not, it's a population record for the state.
 
 
 # APIs

@@ -1,5 +1,12 @@
 <template>
   <div class="home">
+
+    <div class="intro">
+      This is a tool to help communicate the risks associated with social contact during the coronavirus pandemic. 
+      Choose a location from the dropdowns below, and the risk of repeated gatherings will be displayed. 
+    </div>
+
+
     <div class="top">
       <div class="selection">
         <div class="field">
@@ -8,7 +15,7 @@
               placeholder="Select one or more countries"
               :options="countries"
               v-model="selectedCountries"
-              v-on:change="makeStates()"
+              v-on:change="makeStates(); redraw()"
               has-search
               multiple
           ></ui-select>
@@ -19,7 +26,7 @@
               placeholder="Select one or more states"
               :options="states"
               v-model="selectedStates"
-              v-on:change="makeCounties()"
+              v-on:change="makeCounties(); redraw()"
               :disabled="(selectedCountries.length === 0)"
               has-search
               multiple
@@ -32,51 +39,59 @@
               :options="counties"
               v-model="selectedCounties"
               :disabled="(selectedStates.length === 0)"
+              v-on:change="redraw()"
               has-search
               multiple
           ></ui-select>
         </div>
-        <div class="field">
-          <label>{{ cgr }}-day Compound Growth Rate</label>
-          <ui-slider
-              show-marker
-              snap-to-steps
+        <div class="hidden">
+          <div class="field">
+            <label>{{ cgr }}-day Compound Growth Rate</label>
+            <ui-slider
+                show-marker
+                snap-to-steps
 
-              :step="1"
-              :min="1"
-              :max="10"
+                :step="1"
+                :min="1"
+                :max="10"
 
-              v-model="cgr"
-          ></ui-slider>
-        </div>
-        <div class="field">
-          <label>Case Duration ({{ dur }} days)</label>
-          <ui-slider
-              show-marker
-              snap-to-steps
+                v-model="cgr"
+            ></ui-slider>
+          </div>
+          <div class="field">
+            <label>Case Duration ({{ dur }} days)</label>
+            <ui-slider
+                show-marker
+                snap-to-steps
 
-              :step="1"
-              :min="1"
-              :max="21"
+                :step="1"
+                :min="1"
+                :max="21"
 
-              v-model="dur"
-          ></ui-slider>
-        </div>
-        <div class="field">
-          <ui-button
-            v-on:click="redraw()"
-          >
-            Get Results
-          </ui-button>
+                v-model="dur"
+            ></ui-slider>
+          </div>
+          <div class="field">
+            <ui-button
+              v-on:click="redraw()"
+            >
+              Get Results
+            </ui-button>
+          </div>
         </div>
       </div>
+
 
       <div class="stats">
         <Stats :loc="locData" :cases="chartData" :cgr="cgr" />
       </div>
     </div>
 
-    <div class="charts">
+    <div class="gathering-wrap">
+      <gathering :loc="locData" :cases="chartData" :cgr="cgr" ></gathering>
+    </div>
+
+    <div class="chart-wrap">
       <Charts :data="chartData" />
     </div>
 
@@ -87,6 +102,7 @@
 // @ is an alias to /src
 import Stats from '@/components/Stats.vue'
 import Charts from '@/components/Charts.vue'
+import Gathering from '@/components/Gathering.vue'
 import axios from 'axios'
 
 let base = 'http://127.0.0.1:5000'
@@ -108,7 +124,7 @@ export default {
       counties: [],
 
       cgr: 7,
-      dur: 12,
+      dur: 14,
       selectedCountries: ["US"],
       selectedStates: ["Colorado"],
       selectedCounties: [],
@@ -212,21 +228,41 @@ export default {
     })
   },
   components: {
+    Gathering,
     Charts,
     Stats
   }
 }
 </script>
 
-<style >
+<style>
   .top {
     display: flex
   }
   .home .selection {
-    flex: 1 1 40%;
-    margin-right: 40px;
+    flex: 1 1 25%;
   }
   .home .stats {
+    margin-left: 80px;
     flex: 1 1 60%;
   }
+
+  .intro {
+    margin: 20px 0 60px 0;
+  }
+
+  .gathering-wrap {
+    border-top: 1px solid #757575;
+    margin: 40px 0 0 0;
+  }
+
+  .chart-wrap {
+    border-top: 1px solid #757575;
+    margin: 40px 0 0 0;
+  }
+
+  .hidden {
+    display: none;
+  }
+
 </style>

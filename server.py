@@ -163,7 +163,14 @@ def cases():
                                 ORDER BY date
                             ))
                         END
-                    ) ^  (1.0/:cgr_window) * 100 as cgr
+                    ) ^  (1.0/:cgr_window) * 100 as cgr,
+
+                    -- calculate a window of incidence, same as the cgr window
+                    ((cases - lag(cases, :cgr_window) over (
+                            ORDER BY date
+                    )) / pop) * 100000 as window_incidence
+
+
 
 
             FROM cte
@@ -198,5 +205,6 @@ def case(case_row):
         "new_cases": case_row[5],
         "new_deaths": case_row[6],
         "active_cases": case_row[7],
-        "cgr": case_row[8]
+        "cgr": case_row[8],
+        "window_incidence": case_row[9],
     }

@@ -33,7 +33,7 @@ spec:
       - name: regcred
       containers:
       - name: web
-        image: ghcr.io/arbuckle/covid:1.1
+        image: ghcr.io/arbuckle/covid:1.2
         env:
         - name: API_PREFIX
           value: "/api"
@@ -228,7 +228,7 @@ spec:
       - name: regcred
       containers:
       - name: client
-        image: ghcr.io/arbuckle/covid-client:1.1
+        image: ghcr.io/arbuckle/covid-client:1.3
         env:
         - name: BACKEND_HOST
           value: https://covid.catto5k.com

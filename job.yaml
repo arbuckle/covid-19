@@ -13,7 +13,7 @@ spec:
           - name: regcred
           containers:
           - name: load
-            image: ghcr.io/arbuckle/covid:4
+            image: ghcr.io/arbuckle/covid:1.3
             command: ["python", "load.py"] # then run this
             # command: ["python", "load.py"] # run this first
             env:

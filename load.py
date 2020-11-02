@@ -59,15 +59,23 @@ def retrieve(date):
             lon=float((row[6] if row[6] else 0)),
             combined=row[11]
         )
+
+        active = 0
         try:
             active=int(row[10])
         except ValueError as e:
             print("error parsing active cases for %s" % row[11])
-        active = 0
+
+        deaths = 0
+        try:
+            deaths=int(row[8])
+        except ValueError as e:
+            print("error parsing deaths for %s" % row[11])
+
         c = Case(
             date=date,
             confirmed=int(row[7]),
-            deaths=int(row[8]),
+            deaths=deaths,
             recovered=int(row[9]),
             active=active
         )
