@@ -60,29 +60,25 @@ def retrieve(date):
             combined=row[11]
         )
 
-        active = 0
-        try:
-            active=int(row[10])
-        except ValueError as e:
-            print("error parsing active cases for %s" % row[11])
-
-        deaths = 0
-        try:
-            deaths=int(row[8])
-        except ValueError as e:
-            print("error parsing deaths for %s" % row[11])
-
         c = Case(
             date=date,
-            confirmed=int(row[7]),
-            deaths=deaths,
-            recovered=int(row[9]),
-            active=active
+            confirmed=parseValue(row[7], 'confirmed'),
+            deaths=parseValue(row[8], 'deaths'),
+            recovered=parseValue(row[9], 'recovered'),
+            active=parseValue(row[10], 'active')
         )
         locations.append(l)
         cases.append(c)
 
     return cases, locations
+
+def parseValue(n, kind):
+    out = 0
+    try:
+        out = int(n)
+    except ValueError as e:
+        print("error parsing %s for %s" % (kind, n))
+    return out
 
 def main():
 

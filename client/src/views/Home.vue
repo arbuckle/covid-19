@@ -23,11 +23,11 @@
         <div class="field">
           <ui-select
               label="State"
-              placeholder="Select one or more states"
+              :placeholder="selectedCountries.length <= 1 ? 'Select one or more states' : 'Comparison mode'"
               :options="states"
               v-model="selectedStates"
               v-on:change="makeCounties(); redraw()"
-              :disabled="(selectedCountries.length === 0)"
+              :disabled="(selectedCountries.length !== 1)"
               has-search
               multiple
           ></ui-select>
@@ -35,10 +35,10 @@
         <div class="field">
         <ui-select
               label="County"
-              placeholder="Select one or more counties"
+              :placeholder="selectedStates.length <= 1 && selectedCountries.length <= 1 ? 'Select one or more counties' : 'Comparison mode'"
               :options="counties"
               v-model="selectedCounties"
-              :disabled="(selectedStates.length === 0)"
+              :disabled="(selectedStates.length !== 1)"
               v-on:change="redraw()"
               has-search
               multiple
@@ -184,7 +184,40 @@ export default {
       }
       return url
     },
+    q: function(country, state, county) {
+      let url = "?cgr_window=" + this.cgr
+      url = url + "&case_duration=" + this.dur
+      url = country ? url + '&country=' + country : url
+      url = state ? url + '&state=' + state : url
+      url = county ? url + '&county=' + county : url
+      return url
+    },
     redraw: function(){
+
+      // This is a hot mess.  Generating a unique URL for each multi-value item in the selector. 
+      let queries = []
+      for (let i in this.selectedCountries) {
+        for (let j in this.selectedStates) {
+          for (let k in this.selectedCounties) {
+            queries.push(this.q(this.selectedCountries[i], this.selectedStates[j], this.selectedCounties[k]))
+          }
+          if (this.selectedCounties.length === 0) {
+            queries.push(this.q(this.selectedCountries[i], this.selectedStates[j]))
+          }
+        }
+        if (this.selectedStates.length === 0) {
+            queries.push(this.q(this.selectedCountries[i]))
+        }
+      }
+      if (this.selectedCountries.length === 0) {
+          queries.push(this.q())
+      }
+
+
+      // Next you will want to get data for each set of cases?  
+      // You'll want to associate location data in addition...  
+      // get the data in a different way
+      // 
 
       let that = this
 
