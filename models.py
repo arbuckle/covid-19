@@ -26,7 +26,7 @@ def init_db(dbhost, dbuser, dbpass):
     
     conn = "postgresql://%s:%s@%s:5432/covid" % (dbuser, pw, dbhost)
 
-    engine = create_engine(conn, convert_unicode=True, echo=True)
+    engine = create_engine(conn, convert_unicode=True, echo=True, pool_pre_ping=True)
     db_session = scoped_session(sessionmaker(autocommit=False,
                                             autoflush=False,
                                             bind=engine))

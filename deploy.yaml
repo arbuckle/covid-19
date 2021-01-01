@@ -33,7 +33,7 @@ spec:
       - name: regcred
       containers:
       - name: web
-        image: ghcr.io/arbuckle/covid:1.5
+        image: ghcr.io/arbuckle/covid:1.7
         env:
         - name: API_PREFIX
           value: "/api"
